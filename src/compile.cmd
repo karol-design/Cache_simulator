@@ -1,0 +1,1 @@
+gcc cache_sim.c -o app

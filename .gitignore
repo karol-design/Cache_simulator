@@ -1,0 +1,9 @@
+# VS code configuration
+.vscode
+*.code-workspace
+
+# Output files
+.exe
+
+TODO.md
+NOTES.md
