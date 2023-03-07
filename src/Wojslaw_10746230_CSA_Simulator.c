@@ -1,8 +1,8 @@
 /**
  * @file    cache_sim.c
  * @brief   Cache Memory Controller simulator (16 modes, .trc input, .csv output with sim stats)
- * @author  Karol Wojslaw (karol.wojslaw@student.manchester.ac.uk)
- * Formatted with CLang altered Google style
+ * @author  Karol Wojslaw (karol.wojslaw@student.manchester.ac.uk, student_ID: 10746230)
+ * Formatted with CLang, altered Google style
  */
 
 #include <math.h>
@@ -16,7 +16,8 @@
 
 #define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
 
-const char *filename = "test_file.trc";
+const char *input_file_name = "bubble_sort_trace_001.trc";
+const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
 
 /* Type definitions */
 typedef unsigned int uint_t;
@@ -82,6 +83,7 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
 void initialise_cache(cache_mem_t *cm);
 void initialise_cache_stats(cache_mem_stats_t *cm_stats, uint_t _mode_ID);
 void print_stats(cache_mem_stats_arr_t *stats);
+void output_stats(cache_mem_stats_arr_t *stats);
 
 /* Main function */
 
@@ -112,6 +114,7 @@ int main() {
     }
 
     print_stats(&stats);
+    output_stats(&stats);
 
     return 0;
 }
@@ -151,12 +154,12 @@ addr_bitfields_t hex_to_bitfields(uint_t _addr, cache_mode_t cm_mode) {
  * @return Pointer to the file
  */
 FILE *open_file() {
-    FILE *fp = fopen(filename, "r");  // Open the file in read mode (txt file) and return a pointer to it
-    if (fp == NULL) {                 // Test if the file has been opened sucessfully
-        printf("open_file: ERROR, NULL pointer returned when opening %s\n", filename);
+    FILE *fp = fopen(input_file_name, "r");  // Open the file in read mode (txt file) and return a pointer to it
+    if (fp == NULL) {                        // Test if the file has been opened sucessfully
+        printf("open_file: ERROR, NULL pointer returned when opening %s\n", input_file_name);
         exit(EXIT_FAILURE);
     } else {
-        printf("open_file: File %s opened sucessfully\n", filename);
+        printf("open_file: File %s opened sucessfully\n", input_file_name);
     }
 
     return fp;
@@ -170,7 +173,7 @@ void close_file(FILE *fp) {
     if (fclose(fp) == EOF) {  // Close the file and test if successfully
         printf("close_file: ERROR, EOF error returned when closing %s\n");
     } else {
-        printf("close_file: File %s closed sucessfully\n", filename);
+        printf("close_file: File %s closed sucessfully\n", input_file_name);
     }
 }
 
@@ -283,5 +286,38 @@ void print_stats(cache_mem_stats_arr_t *stats) {
                stats->cm_stats[i].NCWM,
                stats->cm_stats[i].NRA,
                stats->cm_stats[i].NWA);
+    }
+}
+
+/**
+ * @brief Output simulation results for all modes of cache controller operation to CSV file
+ * @param stats Pointer to the stats array wrapper structure
+ */
+void output_stats(cache_mem_stats_arr_t *stats) {
+    FILE *fp = fopen(output_file_name, "w+");  // Open the file in write mode (txt file) and return a pointer to it
+    if (fp == NULL) {                          // Test if the file has been opened sucessfully
+        printf("\noutput_stats: ERROR, NULL pointer returned when opening %s\n", output_file_name);
+        exit(EXIT_FAILURE);
+    } else {
+        printf("\noutput_stats: File %s opened sucessfully\n", output_file_name);
+    }
+
+    fprintf(fp, "trace_file_name, mode_ID, NRA, NWA, NCRH, NCRM, NCWH, NCWM\n");  // Print data header row into the csv file
+    for (int i = 0; i < 16; i++) {                                                 // Print simulation results for each mode
+        fprintf(fp, "%s, %u, %u, %u, %u, %u, %u, %u\n",
+                input_file_name,
+                stats->cm_stats[i].mode_ID,
+                stats->cm_stats[i].NCRH,
+                stats->cm_stats[i].NCRM,
+                stats->cm_stats[i].NCWH,
+                stats->cm_stats[i].NCWM,
+                stats->cm_stats[i].NRA,
+                stats->cm_stats[i].NWA);
+    }
+
+    if (fclose(fp) == EOF) {  // Close the file and test if successfully
+        printf("output_stats: ERROR, EOF error returned when closing %s\n");
+    } else {
+        printf("output_stats: File %s closed sucessfully\n", output_file_name);
     }
 }
