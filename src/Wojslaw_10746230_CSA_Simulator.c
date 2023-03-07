@@ -94,7 +94,7 @@ int main() {
     cache_mem_t cm;
 
     for (uint_t i = 0; i < 16; i++) {  // For each Cache mode
-        printf("\nmain: Testing mode no. %d, Write policy: %d\n", modes.cm_mode[i].mode_id, modes.cm_mode[i].write_policy);
+        printf("\nmain: Testing mode no. %u, Write policy: %u\n", modes.cm_mode[i].mode_id, modes.cm_mode[i].write_policy);
         FILE *trace_file_p = open_file();               // Open the trace file
         initialise_cache(&cm);                          // Initialise cache memory for the next simulation
         initialise_cache_stats(&stats.cm_stats[i], i);  // Initialise cache memory stats
@@ -105,7 +105,7 @@ int main() {
             fscanf(trace_file_p, "%c %x \n", &rw_access, &mem_addr);                  // Copy mem. access info. to rw_flag and addr variables
             addr_bitfields_t addr_bf = hex_to_bitfields(mem_addr, modes.cm_mode[i]);  // Extract the bitfields
             if (DEBUG_MESSAGES_ON) {
-                printf("main: Addr %d | MMTB %d | CMBID %d | Offset %d\n", addr_bf.addr, addr_bf.mmtb, addr_bf.cmbid, addr_bf.offset);
+                printf("main: Addr %u | MMTB %u | CMBID %u | Offset %u\n", addr_bf.addr, addr_bf.mmtb, addr_bf.cmbid, addr_bf.offset);
             }
 
             simulate_cache(&cm, modes.cm_mode[i], addr_bf, rw_access, &stats.cm_stats[i]);
