@@ -172,7 +172,7 @@ FILE *open_file() {
  */
 void close_file(FILE *fp) {
     if (fclose(fp) == EOF) {  // Close the file and test if successfully
-        printf("close_file: ERROR, EOF error returned when closing %s\n");
+        printf("close_file: ERROR, EOF error returned when closing %s\n", input_file_name);
     } else {
         printf("close_file: File %s closed sucessfully\n", input_file_name);
     }
@@ -184,7 +184,7 @@ void close_file(FILE *fp) {
  */
 cache_modes_arr_t populate_modes_array() {
     cache_modes_arr_t cm;  // Wrapper struct with an array of 16 cache mode structures
-    for (int i = 0; i < 16; i++) {
+    for (uint_t i = 0; i < 16; i++) {
         cm.cm_mode[i].mode_id = (i + 1);
         cm.cm_mode[i].cache_block_size = cache_modes_config[i % 8][0];
         cm.cm_mode[i].no_of_cache_blocks = cache_modes_config[i % 8][1];
@@ -233,8 +233,8 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
     // Test if the tag bits for the block are iidentical to MM tag bits (Correct MM block stored in CM)
     bool tag_bit_test = (cm->tag_bits[bf.cmbid] == bf.mmtb);
 
-    if (rw = 'R') {  // Read access
-        if (valid_bit_test & tag_bit_test) {
+    if (rw == 'R') {  // Read access
+        if (valid_bit_test && tag_bit_test) {
             (cm_stats->NCRH)++;  // Increment Read Hit Count
         } else {
             (cm_stats->NCRM)++;  // Increment Read Miss Count
@@ -249,8 +249,8 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
         }
     }
 
-    if (rw = 'W') {  // Write access
-        if (valid_bit_test & tag_bit_test) {
+    if (rw == 'W') {  // Write access
+        if (valid_bit_test && tag_bit_test) {
             (cm_stats->NCWH)++;  // Increment Write Hit Count
             if (cm_mode.write_policy == WAWT) {
                 (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
@@ -320,7 +320,7 @@ void output_stats(cache_mem_stats_arr_t *stats) {
     }
 
     if (fclose(fp) == EOF) {  // Close the file and test if successfully
-        printf("output_stats: ERROR, EOF error returned when closing %s\n");
+        printf("output_stats: ERROR, EOF error returned when closing %s\n", output_file_name);
     } else {
         printf("output_stats: File %s closed sucessfully\n", output_file_name);
     }
