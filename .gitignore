@@ -2,8 +2,12 @@
 .vscode
 *.code-workspace
 
+#Input files
+.trc
+
 # Output files
 .exe
+.csv
 
 TODO.md
 NOTES.md
