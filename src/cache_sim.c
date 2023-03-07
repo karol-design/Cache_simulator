@@ -1,17 +1,26 @@
-/*
- * 1) Read a single entry (line) from the memory trace file and
- * 2) Simulate the behaviour of the cache memory according to the chosen mode
- * 3) Generate output file based on simulation results
+/**
+ * @file    cache_sim.c
+ * @brief   Cache Memory Controller simulator (16 modes, .trc input, .csv output with sim stats)
+ * @author  Karol Wojslaw (karol.wojslaw@student.manchester.ac.uk)
  * Formatted with CLang altered Google style
  */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+/* Macros and const definitions */
+
+#define WAWB 1  // Define write policy macros
+#define WAWT 0
+
+#define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
 
 const char *filename = "test_file.trc";
 
 /* Type definitions */
 typedef unsigned int uint_t;
+typedef unsigned int bool;
 
 typedef struct addr_bitfields {  // Address bitfields structure type
     uint_t addr;                 // Full memory address
@@ -25,12 +34,12 @@ typedef struct cache_mode {  // Cache memory mode details structure type
     uint_t cache_block_size;    // No of words in a CM block
     uint_t no_of_cache_blocks;  // No of CM block
     uint_t cache_size;          // Total no of words in CM
-    uint_t write_policy;          // Write policy (true = WAWB; false = WAWT)
+    uint_t write_policy;        // Write policy (true = WAWB; false = WAWT)
 } cache_mode_t;
 
-typedef struct cache_modes {  // Wrapper struct to hold all 16 cache modes structs
-    cache_mode_t mode[16];
-} cache_modes_t;
+typedef struct cache_modes_arr {  // Wrapper struct to hold all 16 cache modes structs
+    cache_mode_t cm_mode[16];
+} cache_modes_arr_t;
 
 const uint_t cache_modes_config[16][2] = {
     // CM block size, and no. of blocks
@@ -44,44 +53,70 @@ const uint_t cache_modes_config[16][2] = {
     {64, 4},   // Modes 8 & 16
 };
 
-// struct cache_memory {
-//     uint_t tag_bits[];    // Tag bits for all blocks (CMBID)
-//     uint_t valid_bits[];  // Valid bits for all blocks (CMBID)
-// }
+typedef struct cache_mem {  // Cache memory structure type
+    uint_t tag_bits[64];    // Tag bits for all blocks (max size for CMBID used)
+    uint_t valid_bits[64];  // Valid bits for all blocks (max size for CMBID used)
+    uint_t dirty_bits[64];  // Dirty biits for all blocks (max size for CMBID used)
+} cache_mem_t;
+
+typedef struct cache_mem_stats {  // Cache memory statistcs structure
+    uint_t mode_ID;               // Mode ID in which Cache Memory controller operates
+    uint_t NRA;                   // Total number of read accesses to the external memory
+    uint_t NWA;                   // Total number of write accesses to the external memory
+    uint_t NCRH;                  // Number of cache read hits
+    uint_t NCRM;                  // Number of cache read misses
+    uint_t NCWH;                  // Number of cache write hits
+    uint_t NCWM;                  // Number of cache write misses
+} cache_mem_stats_t;
+
+typedef struct cache_mem_stats_arr {  // Wrapper struct to hold all 16 cache statistics structs
+    cache_mem_stats_t cm_stats[16];
+} cache_mem_stats_arr_t;
 
 /* Function prototypes */
-addr_bitfields_t
-char_hex_to_bitfields(char *addr_hex_char, cache_mode_t cm);
+addr_bitfields_t hex_to_bitfields(uint_t _addr, cache_mode_t cm_mode);
 FILE *open_file();
 void close_file(FILE *fp);
-cache_modes_t populate_cache_modes_array();
+cache_modes_arr_t populate_modes_array();
+void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, char rw, cache_mem_stats_t *cm_stats);
+void initialise_cache(cache_mem_t *cm);
+void initialise_cache_stats(cache_mem_stats_t *cm_stats, uint_t _mode_ID);
+void print_stats(cache_mem_stats_arr_t *stats);
+
+/* Main function */
 
 int main() {
-    cache_modes_t cache_modes = populate_cache_modes_array();
+    cache_modes_arr_t modes = populate_modes_array();
+    cache_mem_stats_arr_t stats;
+    cache_mem_t cm;
 
-    for (int i = 0; i < 16; i++) {  // For each mode
-        printf("\nmain: Testing mode no. %d\n", cache_modes.mode[i].mode_id);
-        FILE *trace_file_p = open_file();  // Open the trace file
-        while (feof(trace_file_p) == 0) {  // Loop through all the memory accesses
-            char rw_flag, addr[5];         // Create a char to hold read/write information and a string to hold mem address in hex
-            // Copy the next mem. access information to rw_flag and addr variables
-            fscanf(trace_file_p, "%c %c%c%c%c \n", &rw_flag, &addr[0], &addr[1], &addr[2], &addr[3]);
-            addr_bitfields_t addr_bitfields = char_hex_to_bitfields(addr, cache_modes.mode[i]);  // Extract the bitfields
+    for (uint_t i = 0; i < 16; i++) {  // For each Cache mode
+        printf("\nmain: Testing mode no. %d\n", modes.cm_mode[i].mode_id);
+        FILE *trace_file_p = open_file();               // Open the trace file
+        initialise_cache(&cm);                          // Initialise cache memory for the next simulation
+        initialise_cache_stats(&stats.cm_stats[i], i);  // Initialise cache memory stats
 
-            printf("main: Addr = %d | MMTB = %d | CMBID = %d | Offset = %d\n", addr_bitfields.addr, addr_bitfields.mmtb, addr_bitfields.cmbid, addr_bitfields.offset);
+        while (feof(trace_file_p) == 0) {                                             // Loop through all memory accesses
+            char rw_access;                                                           // Read/write information
+            uint_t mem_addr;                                                          // Memory address
+            fscanf(trace_file_p, "%c %x \n", &rw_access, &mem_addr);                  // Copy mem. access info. to rw_flag and addr variables
+            addr_bitfields_t addr_bf = hex_to_bitfields(mem_addr, modes.cm_mode[i]);  // Extract the bitfields
+            if (DEBUG_MESSAGES_ON) {
+                printf("main: Addr %d | MMTB %d | CMBID %d | Offset %d\n", addr_bf.addr, addr_bf.mmtb, addr_bf.cmbid, addr_bf.offset);
+            }
 
-            /* Simulate the cache behaviour */
-            // Compare the MMTB with TB of the given CMBID
-            // Test the Validity bit
-            // If hit, then nothing; if miss, then update the cache
+            simulate_cache(&cm, modes.cm_mode[i], addr_bf, rw_access, &stats.cm_stats[i]);
         }
+
         close_file(trace_file_p);  // Close the trace file
     }
+
+    print_stats(&stats);
 
     return 0;
 }
 
-/* ----------------- Other function definitions ----------------- */
+/* Function definitions */
 
 /**
  * @brief Convert HEX address in a string to addr. bitfields structure
@@ -89,14 +124,13 @@ int main() {
  * @param cm Cache mode info (struct) currently in use
  * @return Addr. bitfields structure with ADDR, MMTB, CMBID and Offset memebers
  */
-addr_bitfields_t char_hex_to_bitfields(char *addr_hex_char, cache_mode_t cm) {
+addr_bitfields_t hex_to_bitfields(uint_t _addr, cache_mode_t cm_mode) {
     addr_bitfields_t bf;
+    bf.addr = _addr;
 
-    uint_t cmbid_length = (uint_t)log2(cm.no_of_cache_blocks);  // Calculate how many CMBID bits are in the addr.
-    uint_t offset_length = (uint_t)log2(cm.cache_block_size);   // Calculate how many Offset bits are in the addr.
-    uint_t mmtb_length = (16 - cmbid_length - offset_length);   // Calculate how many MMTB bits are in the addr.
-
-    bf.addr = (uint_t)strtol(addr_hex_char, NULL, 16);  // Convert str hex to an unsigned int
+    uint_t cmbid_length = (uint_t)log2(cm_mode.no_of_cache_blocks);  // Calculate how many CMBID bits are in the addr.
+    uint_t offset_length = (uint_t)log2(cm_mode.cache_block_size);   // Calculate how many Offset bits are in the addr.
+    uint_t mmtb_length = (16 - cmbid_length - offset_length);        // Calculate how many MMTB bits are in the addr.
 
     // Remove CMBID and Offset bits and shift MMTB bits to correct positions
     bf.mmtb = (bf.addr) >> (cmbid_length + offset_length);
@@ -144,14 +178,110 @@ void close_file(FILE *fp) {
  * @brief Populate chache modes array with the values from cache_modes_config array
  * @return Cache modes structure
  */
-cache_modes_t populate_cache_modes_array() {
-    cache_modes_t cm;  // Wrapper struct with an array of 16 cache mode structures
+cache_modes_arr_t populate_modes_array() {
+    cache_modes_arr_t cm;  // Wrapper struct with an array of 16 cache mode structures
     for (int i = 0; i < 16; i++) {
-        cm.mode[i].mode_id = (i + 1);
-        cm.mode[i].cache_block_size = cache_modes_config[i%8][0];
-        cm.mode[i].no_of_cache_blocks = cache_modes_config[i%8][1];
-        cm.mode[i].cache_size = cm.mode[i].cache_block_size * cm.mode[i].no_of_cache_blocks;
-        cm.mode[i].write_policy = (i > 8);
+        cm.cm_mode[i].mode_id = (i + 1);
+        cm.cm_mode[i].cache_block_size = cache_modes_config[i % 8][0];
+        cm.cm_mode[i].no_of_cache_blocks = cache_modes_config[i % 8][1];
+        cm.cm_mode[i].cache_size = cm.cm_mode[i].cache_block_size * cm.cm_mode[i].no_of_cache_blocks;
+        cm.cm_mode[i].write_policy = (i < 8);
     }
     return cm;
+}
+
+/**
+ * @brief Initialise the Cache Memory by reseting all its status bits (tag, valid, dirty)
+ */
+void initialise_cache(cache_mem_t *cm) {
+    for (int i = 0; i < 64; i++) {  // Reset tag, valid and dirty bits for all blocks in the cache
+        cm->tag_bits[i] = 0;
+        cm->valid_bits[i] = 0;
+        cm->dirty_bits[i] = 0;
+    }
+}
+
+/**
+ * @brief Initialise Cache Memory statistics structure by reseting all its entries
+ */
+void initialise_cache_stats(cache_mem_stats_t *cm_stats, uint_t _mode_ID) {
+    cm_stats->mode_ID = _mode_ID;
+    cm_stats->NCRH = 0;
+    cm_stats->NCRM = 0;
+    cm_stats->NCWH = 0;
+    cm_stats->NCWM = 0;
+    cm_stats->NRA = 0;
+    cm_stats->NWA = 0;
+}
+
+/**
+ * @brief Simulate the Cache Memory according to the Cache Mode and Unique mem. access bitfields / rw flag
+ * @param cm Pointer to the cache memory structure
+ * @param cm_mode Cache memory controller mode info structure
+ * @param bf Bitfield structure for the specific memory access
+ * @param rw Read/Write access type
+ * @param cm_stats Pointer to the cache memory statistics structure
+ */
+void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, char rw, cache_mem_stats_t *cm_stats) {
+    // Test if Valid bit of the CM block is set (Something stored in the CM block)
+    bool valid_bit_test = (cm->valid_bits[bf.cmbid] == 1);
+
+    // Test if the tag bits for the block are iidentical to MM tag bits (Correct MM block stored in CM)
+    bool tag_bit_test = (cm->tag_bits[bf.cmbid] == bf.mmtb);
+
+    if (rw = 'R') {  // Read access
+        if (valid_bit_test & tag_bit_test) {
+            (cm_stats->NCRH)++;  // Increment Read Hit Count
+        } else {
+            (cm_stats->NCRM)++;  // Increment Read Miss Count
+            // Test if there are any data that needs to be written back to CM before block replacement
+            if ((cm_mode.write_policy == WAWB) && valid_bit_test && (cm->dirty_bits[bf.cmbid] == 1)) {
+                (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+            }
+            cm->tag_bits[bf.cmbid] = bf.mmtb;             // Set CM block's tag bits to MMTB
+            cm->valid_bits[bf.cmbid] = 1;                 // Set CM block's Valid bit to 1
+            cm->dirty_bits[bf.cmbid] = 0;                 // Set CM block's Dirty bit to 0
+            (cm_stats->NRA) += cm_mode.cache_block_size;  // Increment MM Read Access Count by the no. of words per block
+        }
+    }
+
+    if (rw = 'W') {  // Write access
+        if (valid_bit_test & tag_bit_test) {
+            (cm_stats->NCWH)++;  // Increment Write Hit Count
+            if (cm_mode.write_policy == WAWT) {
+                (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+            }
+        } else {
+            (cm_stats->NCWM)++;                           // Increment Write Miss Count
+            (cm_stats->NRA) += cm_mode.cache_block_size;  // Increment MM Read Access Count by the no. of words per block
+
+            // Test the dirty bit and writing policy to see if the block should be written back to MM
+            bool mem_write_required = ((cm_mode.write_policy == WAWB) && (cm->dirty_bits[bf.cmbid] == 1) && (cm->valid_bits[bf.cmbid] == 1));
+            if ((cm_mode.write_policy == WAWT) || mem_write_required) {
+                (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+            }
+
+            cm->tag_bits[bf.cmbid] = bf.mmtb;  // Set CM block's tag bits to MMTB
+            cm->valid_bits[bf.cmbid] = 1;      // Set CM block's Valid bit to 1
+        }
+        cm->dirty_bits[bf.cmbid] = 1;  // Set CM block's Dirty bit to 1
+    }
+}
+
+/**
+ * @brief Print simulation results for all modes of cache controller operation
+ * @param stats Pointer to the stats array wrapper structure
+ */
+void print_stats(cache_mem_stats_arr_t *stats) {
+    printf("\n\n \t----------------------\tSimulation results (statistics)\t---------------------- \n\n");
+    for (int i = 0; i < 16; i++) {  // Print simulation results for each mode
+        printf("ID: %d \tNCRH: %d \tNCRM: %d \tNCWH: %d \tNCWM: %d \tNRA: %d \tNWA: %d\n",
+               stats->cm_stats[i].mode_ID,
+               stats->cm_stats[i].NCRH,
+               stats->cm_stats[i].NCRM,
+               stats->cm_stats[i].NCWH,
+               stats->cm_stats[i].NCWM,
+               stats->cm_stats[i].NRA,
+               stats->cm_stats[i].NWA);
+    }
 }
