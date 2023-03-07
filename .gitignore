@@ -3,11 +3,14 @@
 *.code-workspace
 
 #Input files
-.trc
+*.trc
 
 # Output files
-.exe
-.csv
+*.exe
+*.csv
+
+# PDF Scripts
+*.pdf
 
 TODO.md
 NOTES.md
