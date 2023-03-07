@@ -1,1 +1,1 @@
-gcc cache_sim.c -o app
+gcc Wojslaw_10746230_CSA_Simulator.c -o app
