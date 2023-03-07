@@ -6,6 +6,7 @@
 *.trc
 
 # Output files
+build
 *.exe
 *.csv
 
