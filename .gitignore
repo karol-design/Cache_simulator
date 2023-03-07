@@ -10,7 +10,7 @@
 *.csv
 
 # PDF Scripts
-scripts
+docs
 *.pdf
 
 TODO.md
