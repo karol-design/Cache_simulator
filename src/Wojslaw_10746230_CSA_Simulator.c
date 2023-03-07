@@ -15,6 +15,7 @@
 #define WAWT 0
 
 #define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
+#define OUTPUT_CSV_HEADER 0  // Turn CSV header ON/OFF with this macro
 
 const char *input_file_name = "bubble_sort_trace_001.trc";
 const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
@@ -93,7 +94,7 @@ int main() {
     cache_mem_t cm;
 
     for (uint_t i = 0; i < 16; i++) {  // For each Cache mode
-        printf("\nmain: Testing mode no. %d\n", modes.cm_mode[i].mode_id);
+        printf("\nmain: Testing mode no. %d, Write policy: %d\n", modes.cm_mode[i].mode_id, modes.cm_mode[i].write_policy);
         FILE *trace_file_p = open_file();               // Open the trace file
         initialise_cache(&cm);                          // Initialise cache memory for the next simulation
         initialise_cache_stats(&stats.cm_stats[i], i);  // Initialise cache memory stats
@@ -302,8 +303,11 @@ void output_stats(cache_mem_stats_arr_t *stats) {
         printf("\noutput_stats: File %s opened sucessfully\n", output_file_name);
     }
 
-    fprintf(fp, "trace_file_name, mode_ID, NRA, NWA, NCRH, NCRM, NCWH, NCWM\n");  // Print data header row into the csv file
-    for (int i = 0; i < 16; i++) {                                                 // Print simulation results for each mode
+    if (OUTPUT_CSV_HEADER) {
+        fprintf(fp, "trace_file_name, mode_ID, NRA, NWA, NCRH, NCRM, NCWH, NCWM\n");  // Print data header row into the csv file
+    }
+
+    for (int i = 0; i < 16; i++) {  // Print simulation results for each mode
         fprintf(fp, "%s, %u, %u, %u, %u, %u, %u, %u\n",
                 input_file_name,
                 stats->cm_stats[i].mode_ID,
