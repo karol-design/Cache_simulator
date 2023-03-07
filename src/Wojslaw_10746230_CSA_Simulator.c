@@ -17,8 +17,8 @@
 #define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
 #define OUTPUT_CSV_HEADER 0  // Turn CSV header ON/OFF with this macro
 
-const char *input_file_name = "bubble_sort_trace_001.trc";
-const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
+static const char *input_file_name = "bubble_sort_trace_001.trc";
+static const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
 
 /* Type definitions */
 typedef unsigned int uint_t;
@@ -43,7 +43,7 @@ typedef struct cache_modes_arr {  // Wrapper struct to hold all 16 cache modes s
     cache_mode_t cm_mode[16];
 } cache_modes_arr_t;
 
-const uint_t cache_modes_config[16][2] = {
+static const uint_t cache_modes_config[16][2] = {
     // CM block size, and no. of blocks
     {16, 8},   // Modes 1 & 9
     {16, 16},  // Modes 2 & 10
@@ -77,9 +77,9 @@ typedef struct cache_mem_stats_arr {  // Wrapper struct to hold all 16 cache sta
 
 /* Function prototypes */
 addr_bitfields_t hex_to_bitfields(uint_t _addr, cache_mode_t cm_mode);
-FILE *open_file();
+FILE *open_file(void);
 void close_file(FILE *fp);
-cache_modes_arr_t populate_modes_array();
+cache_modes_arr_t populate_modes_array(void);
 void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, char rw, cache_mem_stats_t *cm_stats);
 void initialise_cache(cache_mem_t *cm);
 void initialise_cache_stats(cache_mem_stats_t *cm_stats, uint_t _mode_ID);
@@ -279,7 +279,7 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
 void print_stats(cache_mem_stats_arr_t *stats) {
     printf("\n\n \t----------------------\tSimulation results (statistics)\t---------------------- \n\n");
     for (int i = 0; i < 16; i++) {  // Print simulation results for each mode
-        printf("ID: %d \tNCRH: %d \tNCRM: %d \tNCWH: %d \tNCWM: %d \tNRA: %d \tNWA: %d\n",
+        printf("ID: %u \tNCRH: %u \tNCRM: %u \tNCWH: %u \tNCWM: %u \tNRA: %u \tNWA: %u\n",
                stats->cm_stats[i].mode_ID,
                stats->cm_stats[i].NCRH,
                stats->cm_stats[i].NCRM,
