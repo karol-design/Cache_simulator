@@ -1,0 +1,12 @@
+Test trace:
+
+R 0000 // Read miss (NCRM = 1, CMTB = 0000 0000 0, CMVB = 1, CMDB = 0, NRA = 16)
+W 0000 // Write hit (NCWH = 1, CMDB = 1)
+R FF80 // Read miss (NCRM = 2, CMTB = 1111 1111 1, NWA = 16, CMVB = 1, NRA = 32, CMDB = 0)
+W 0090 // Write miss (NCWM = 1, NRA = 48, CMTB = 0000 0000 1, CMVB = 1, CMDB = 1)
+W 0110 // Write miss (NCWM = 2, NRA = 64, NWA = 32, CMTB = 0000 0001 0, CMVB = 1, CMDB = 1)
+R FF81 // Read hit (NCRH = 1)
+
+Correct output for modes 0 and 8
+ID: 0           NCRH: 1         NCRM: 2         NCWH: 1         NCWM: 2         NRA: 64         NWA: 32
+ID: 8           NCRH: 1         NCRM: 2         NCWH: 1         NCWM: 2         NRA: 64         NWA: 48
