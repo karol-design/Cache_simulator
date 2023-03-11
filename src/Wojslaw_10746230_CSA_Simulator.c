@@ -17,7 +17,7 @@
 #define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
 #define OUTPUT_CSV_HEADER 0  // Turn CSV header ON/OFF with this macro
 
-static const char *input_file_name = "bubble_sort_trace_001.trc";
+static const char *input_file_name = "bubble_sort_trace_015.trc";
 static const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
 
 /* Type definitions */
@@ -105,7 +105,7 @@ int main() {
             fscanf(trace_file_p, "%c %x \n", &rw_access, &mem_addr);                  // Copy mem. access info. to rw_flag and addr variables
             addr_bitfields_t addr_bf = hex_to_bitfields(mem_addr, modes.cm_mode[i]);  // Extract the bitfields
             if (DEBUG_MESSAGES_ON) {
-                printf("main: Addr %u | MMTB %u | CMBID %u | Offset %u\n", addr_bf.addr, addr_bf.mmtb, addr_bf.cmbid, addr_bf.offset);
+                printf("main: Addr %-5u | MMTB %-5u | CMBID %-5u | Offset %-5u | R/W %-2u\n", addr_bf.addr, addr_bf.mmtb, addr_bf.cmbid, addr_bf.offset, rw_access);
             }
 
             simulate_cache(&cm, modes.cm_mode[i], addr_bf, rw_access, &stats.cm_stats[i]);
@@ -233,14 +233,27 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
     // Test if the tag bits for the block are iidentical to MM tag bits (Correct MM block stored in CM)
     bool tag_bit_test = (cm->tag_bits[bf.cmbid] == bf.mmtb);
 
+    if (DEBUG_MESSAGES_ON) {
+        printf("simulate_cache: Valid bit test %u | Tag bit test %u\n", valid_bit_test, tag_bit_test);
+    }
+
     if (rw == 'R') {  // Read access
         if (valid_bit_test && tag_bit_test) {
             (cm_stats->NCRH)++;  // Increment Read Hit Count
+            if (DEBUG_MESSAGES_ON) {
+                printf("simulate_cache: Read Hit++\n");
+            }
         } else {
             (cm_stats->NCRM)++;  // Increment Read Miss Count
+            if (DEBUG_MESSAGES_ON) {
+                printf("simulate_cache: Read Miss++\n");
+            }
             // Test if there are any data that needs to be written back to CM before block replacement
             if ((cm_mode.write_policy == WAWB) && valid_bit_test && (cm->dirty_bits[bf.cmbid] == 1)) {
                 (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+                if (DEBUG_MESSAGES_ON) {
+                    printf("simulate_cache: NWA++ (x Block Size)\n");
+                }
             }
             cm->tag_bits[bf.cmbid] = bf.mmtb;             // Set CM block's tag bits to MMTB
             cm->valid_bits[bf.cmbid] = 1;                 // Set CM block's Valid bit to 1
@@ -251,18 +264,30 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
 
     if (rw == 'W') {  // Write access
         if (valid_bit_test && tag_bit_test) {
+            if (DEBUG_MESSAGES_ON) {
+                printf("simulate_cache: Write Hit++\n");
+            }
             (cm_stats->NCWH)++;  // Increment Write Hit Count
             if (cm_mode.write_policy == WAWT) {
                 (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+                if (DEBUG_MESSAGES_ON) {
+                    printf("simulate_cache: NWA++ (x Block Size)\n");
+                }
             }
         } else {
-            (cm_stats->NCWM)++;                           // Increment Write Miss Count
+            (cm_stats->NCWM)++;  // Increment Write Miss Count
+            if (DEBUG_MESSAGES_ON) {
+                printf("simulate_cache: Write Miss++\n");
+            }
             (cm_stats->NRA) += cm_mode.cache_block_size;  // Increment MM Read Access Count by the no. of words per block
 
             // Test the dirty bit and writing policy to see if the block should be written back to MM
             bool mem_write_required = ((cm_mode.write_policy == WAWB) && (cm->dirty_bits[bf.cmbid] == 1) && (cm->valid_bits[bf.cmbid] == 1));
             if ((cm_mode.write_policy == WAWT) || mem_write_required) {
                 (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+                if (DEBUG_MESSAGES_ON) {
+                    printf("simulate_cache: NWA++ (x Block Size)\n");
+                }
             }
 
             cm->tag_bits[bf.cmbid] = bf.mmtb;  // Set CM block's tag bits to MMTB
@@ -279,7 +304,7 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
 void print_stats(cache_mem_stats_arr_t *stats) {
     printf("\n\n \t----------------------\tSimulation results (statistics)\t---------------------- \n\n");
     for (int i = 0; i < 16; i++) {  // Print simulation results for each mode
-        printf("ID: %u \tNCRH: %u \tNCRM: %u \tNCWH: %u \tNCWM: %u \tNRA: %u \tNWA: %u\n",
+        printf("ID: %-5u\tNCRH: %-5u\tNCRM: %-5u\tNCWH: %-5u\tNCWM: %-5u\tNRA: %-5u\tNWA: %-5u\n",
                stats->cm_stats[i].mode_ID,
                stats->cm_stats[i].NCRH,
                stats->cm_stats[i].NCRM,
