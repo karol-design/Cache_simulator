@@ -15,9 +15,9 @@
 #define WAWT 0
 
 #define DEBUG_MESSAGES_ON 0  // Turn debug message ON/OFF with this macro
-#define OUTPUT_CSV_HEADER 0  // Turn CSV header ON/OFF with this macro
+#define OUTPUT_CSV_HEADER 1  // Turn CSV header ON/OFF with this macro
 
-static const char *input_file_name = "bubble_sort_trace_015.trc";
+static const char *input_file_name = "test_file.trc";
 static const char *output_file_name = "Wojslaw_10746230_CSA_Results.csv";
 
 /* Type definitions */
@@ -269,9 +269,9 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
             }
             (cm_stats->NCWH)++;  // Increment Write Hit Count
             if (cm_mode.write_policy == WAWT) {
-                (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
+                (cm_stats->NWA)++;  // Increment MM Write Access Count by 1 (for WT)
                 if (DEBUG_MESSAGES_ON) {
-                    printf("simulate_cache: NWA++ (x Block Size)\n");
+                    printf("simulate_cache: NWA++\n");
                 }
             }
         } else {
@@ -283,10 +283,15 @@ void simulate_cache(cache_mem_t *cm, cache_mode_t cm_mode, addr_bitfields_t bf, 
 
             // Test the dirty bit and writing policy to see if the block should be written back to MM
             bool mem_write_required = ((cm_mode.write_policy == WAWB) && (cm->dirty_bits[bf.cmbid] == 1) && (cm->valid_bits[bf.cmbid] == 1));
-            if ((cm_mode.write_policy == WAWT) || mem_write_required) {
+            if (mem_write_required) {
                 (cm_stats->NWA) += cm_mode.cache_block_size;  // Increment MM Write Access Count by the no. of words per block
                 if (DEBUG_MESSAGES_ON) {
                     printf("simulate_cache: NWA++ (x Block Size)\n");
+                }
+            } else if ((cm_mode.write_policy == WAWT)) {
+                (cm_stats->NWA)++;  // Increment MM Write Access Count by 1 (for WT)
+                if (DEBUG_MESSAGES_ON) {
+                    printf("simulate_cache: NWA++\n");
                 }
             }
 
@@ -336,12 +341,12 @@ void output_stats(cache_mem_stats_arr_t *stats) {
         fprintf(fp, "%s, %u, %u, %u, %u, %u, %u, %u\n",
                 input_file_name,
                 stats->cm_stats[i].mode_ID,
+                stats->cm_stats[i].NRA,
+                stats->cm_stats[i].NWA,
                 stats->cm_stats[i].NCRH,
                 stats->cm_stats[i].NCRM,
                 stats->cm_stats[i].NCWH,
-                stats->cm_stats[i].NCWM,
-                stats->cm_stats[i].NRA,
-                stats->cm_stats[i].NWA);
+                stats->cm_stats[i].NCWM);
     }
 
     if (fclose(fp) == EOF) {  // Close the file and test if successfully
